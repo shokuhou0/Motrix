@@ -42,7 +42,7 @@ jobs:
       - run: pnpm run check:file-names
       - run: pnpm run check:third-party-notices
       - name: Batch input and form regression tests
-        run: pnpm exec vitest run src/shared/schemas/add-task.test.ts src/renderer/components/add-task/url-interpreters src/renderer/components/add-task/add-task-form.test.tsx src/renderer/components/add-task/url-textarea.test.tsx
+        run: pnpm exec vitest run src/shared/schemas/add-task.test.ts src/renderer/components/add-task/url-interpreters src/renderer/components/add-task/add-task-form.test.tsx src/renderer/components/add-task/url-textarea.test.tsx tests/scripts/electron-package-runtime-helper.test.ts
       - run: cargo test --manifest-path packages/native-host/Cargo.toml --locked --target x86_64-pc-windows-msvc
       - run: cargo test --manifest-path packages/finalize-fs/Cargo.toml --locked --target x86_64-pc-windows-msvc
       - run: pnpm run build:builtin
