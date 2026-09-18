@@ -56,8 +56,8 @@ jobs:
       - name: Existing add-task Electron end-to-end tests
         run: pnpm test:e2e e2e/add-task.spec.ts
       - run: pnpm run stage:electron -- --platform win32 --arch x64
-      - name: Build unsigned development installer
-        run: pnpm exec electron-builder --win nsis --x64 --publish never '-c.nsis.artifactName=Motrix-Batch-Setup-${version}-x64.exe'
+      - name: Build unsigned installer and no-install archive
+        run: pnpm exec electron-builder --win nsis zip --x64 --publish never '-c.nsis.artifactName=Motrix-Batch-Setup-${version}-x64.exe' '-c.win.artifactName=Motrix-Batch-NoInstall-${version}-x64.${ext}'
       - run: node scripts/verify-electron-package.mjs --app-dir release/win-unpacked --platform win32 --arch x64 --report release/batch-package-report.json
       - run: ./scripts/verify-windows-native-host-dependencies.ps1 -Binary release/win-unpacked/resources/bin/motrix-native-host.exe
       - name: Packaged aria2 integration
@@ -66,10 +66,19 @@ jobs:
         run: pnpm exec vitest run src/core/engine/aria2/engine-websocket-contract.integration.test.ts
       - name: Packaged application smoke test
         run: pnpm run smoke:electron-package -- --app-dir release/win-unpacked --platform win32 --arch x64 --report release/batch-smoke-report.json
-      - name: Installer checksum
+      - name: Verify extracted no-install archive
         shell: pwsh
         run: |
-          Get-ChildItem release/Motrix-Batch-Setup-*-x64.exe | ForEach-Object {
+          $archive = Get-Item release/Motrix-Batch-NoInstall-*-x64.zip
+          Expand-Archive -LiteralPath $archive.FullName -DestinationPath release/no-install-check
+          node scripts/verify-electron-package.mjs --app-dir release/no-install-check --platform win32 --arch x64 --report release/batch-no-install-package-report.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm run smoke:electron-package -- --app-dir release/no-install-check --platform win32 --arch x64 --report release/batch-no-install-smoke-report.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Download checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem release/Motrix-Batch-Setup-*-x64.exe,release/Motrix-Batch-NoInstall-*-x64.zip | ForEach-Object {
             $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
             "$hash  $($_.Name)" | Set-Content -Encoding utf8 "$($_.FullName).sha256"
           }
@@ -81,3 +90,11 @@ jobs:
             release/Motrix-Batch-Setup-*-x64.exe
             release/Motrix-Batch-Setup-*-x64.exe.sha256
             release/batch-*-report.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: Motrix-Batch-Windows-x64-NoInstall
+          if-no-files-found: error
+          path: |
+            release/Motrix-Batch-NoInstall-*-x64.zip
+            release/Motrix-Batch-NoInstall-*-x64.zip.sha256
+            release/batch-no-install-*-report.json
