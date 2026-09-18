@@ -1,0 +1,81 @@
+# Private development artifact only. Official release/signing workflows are unchanged.
+name: Build Windows Batch Edition
+
+on:
+  push:
+    branches: ['feat/batch_named_downloads_20260918']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-2025
+    timeout-minutes: 90
+    env:
+      MOTRIX_SKIP_ENGINE_FETCH: '1'
+      MOTRIX_SKIP_ELECTRON_REBUILD: '1'
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          version: 12.4.2
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4
+        with:
+          toolchain: 1.94.1
+          targets: x86_64-pc-windows-msvc
+      - run: pnpm install --frozen-lockfile
+      - run: node node_modules/electron/install.js
+      - run: pnpm run fetch:engine --platform win32 --arch x64
+      - run: pnpm run check:boundaries
+      - run: pnpm run lint
+      - run: pnpm exec tsc --noEmit
+      - run: pnpm run check:i18n
+      - run: pnpm run check:file-names
+      - run: pnpm run check:third-party-notices
+      - name: Batch input and form regression tests
+        run: pnpm exec vitest run src/shared/schemas/add-task.test.ts src/renderer/components/add-task/url-interpreters src/renderer/components/add-task/add-task-form.test.tsx src/renderer/components/add-task/url-textarea.test.tsx
+      - run: cargo test --manifest-path packages/native-host/Cargo.toml --locked --target x86_64-pc-windows-msvc
+      - run: cargo test --manifest-path packages/finalize-fs/Cargo.toml --locked --target x86_64-pc-windows-msvc
+      - run: pnpm run build:builtin
+      - run: pnpm run build:native-host -- --platform win32 --arch x64
+      - run: pnpm run build:finalize-fs -- --platform win32 --arch x64
+      - name: Native filesystem integration
+        env:
+          MOTRIX_FINALIZE_FS_TEST_BIN: packages/finalize-fs/dist/win32-x64/motrix-finalize-fs.exe
+        run: pnpm exec vitest run src/core/plugin/finalize/native-artifact-operations.integration.test.ts src/core/plugin/finalize/finalize-smb-recovery.integration.test.ts
+      - run: pnpm run build:electron
+      - name: Existing add-task Electron end-to-end tests
+        run: pnpm test:e2e e2e/add-task.spec.ts
+      - run: pnpm run stage:electron -- --platform win32 --arch x64
+      - name: Build unsigned development installer
+        run: pnpm exec electron-builder --win nsis --x64 --publish never '-c.nsis.artifactName=Motrix-Batch-Setup-${version}-x64.exe'
+      - run: node scripts/verify-electron-package.mjs --app-dir release/win-unpacked --platform win32 --arch x64 --report release/batch-package-report.json
+      - run: ./scripts/verify-windows-native-host-dependencies.ps1 -Binary release/win-unpacked/resources/bin/motrix-native-host.exe
+      - name: Packaged aria2 integration
+        env:
+          MOTRIX_ARIA2_TEST_BIN: release/win-unpacked/resources/extra/win32/x64/aria2c.exe
+        run: pnpm exec vitest run src/core/engine/aria2/engine-websocket-contract.integration.test.ts
+      - name: Packaged application smoke test
+        run: pnpm run smoke:electron-package -- --app-dir release/win-unpacked --platform win32 --arch x64 --report release/batch-smoke-report.json
+      - name: Installer checksum
+        shell: pwsh
+        run: |
+          Get-ChildItem release/Motrix-Batch-Setup-*-x64.exe | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+            "$hash  $($_.Name)" | Set-Content -Encoding utf8 "$($_.FullName).sha256"
+          }
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: Motrix-Batch-Windows-x64
+          if-no-files-found: error
+          path: |
+            release/Motrix-Batch-Setup-*-x64.exe
+            release/Motrix-Batch-Setup-*-x64.exe.sha256
+            release/batch-*-report.json

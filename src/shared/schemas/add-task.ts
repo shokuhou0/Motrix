@@ -1,5 +1,6 @@
 import { MAX_TORRENT_BASE64_SIZE } from '@shared/lib/torrent-meta'
 import { z } from 'zod'
+import { parseUrlLines } from './download-source-input'
 
 const torrentFileSchema = z.object({
   index: z.number().int().nonnegative(),
@@ -19,7 +20,16 @@ export { torrentMetaSchema }
 
 const linksTabSchema = z.object({
   tab: z.literal('links'),
-  urls: z.string().min(1, { message: 'task.add.errors.urlsRequired' }),
+  urls: z
+    .string()
+    .min(1, { message: 'task.add.errors.urlsRequired' })
+    .refine(
+      (text) => {
+        const lines = parseUrlLines(text)
+        return lines.length > 0 && lines.every((line) => line.valid)
+      },
+      { message: 'task.add.errors.invalidLines' }
+    ),
   saveDir: z.string().min(1, { message: 'task.add.errors.saveDirRequired' }),
   filename: z.string().optional(),
   split: z.number().int().min(1).max(128).optional(),
@@ -268,7 +278,7 @@ function splitUrlLines(raw: string): string[] {
  * One request per pasted link line. Each line is an independent download —
  * a magnet line becomes its own bt request, everything else an http request
  * with the shared advanced options. The filename override only applies when
- * exactly one line is present (the same name on several tasks would collide).
+ * exactly one line is present; a per-line name takes precedence over it.
  * Mirror semantics (several uris feeding one task) remain available to API
  * callers via the singular converter below.
  */
@@ -276,10 +286,17 @@ export function formValuesToTaskCreateRequests(
   v: AddTaskFormValues
 ): TaskCreateRequest[] {
   if (v.tab !== 'links') return [formValuesToTaskCreateRequest(v)]
-  const lines = splitUrlLines(v.urls)
+  const lines = parseUrlLines(v.urls)
+  if (lines.length === 0 || lines.some((line) => !line.valid)) {
+    throw new Error('task.add.errors.invalidLines')
+  }
   const filename = lines.length === 1 ? v.filename : undefined
   return lines.map((line) =>
-    formValuesToTaskCreateRequest({ ...v, urls: line, filename })
+    formValuesToTaskCreateRequest({
+      ...v,
+      urls: line.url,
+      filename: line.filename ?? filename,
+    })
   )
 }
 

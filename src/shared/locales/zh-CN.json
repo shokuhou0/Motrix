@@ -842,13 +842,14 @@
       "title": "新建任务",
       "links": "链接",
       "torrent": "种子",
-      "urlPlaceholder": "输入 URL、磁力链接…",
+      "urlPlaceholder": "每行输入一个链接，或：文件名,https://example.com/video.mp4",
       "dropTorrent": "拖拽 .torrent 文件到此处，或点击选择",
       "clearSelection": "清除选择",
       "createFailed": "创建下载任务失败。",
       "createFailedWithReason": "创建下载任务失败：{{reason}}",
       "parseFailed": "解析种子文件失败。",
       "urlsCount_other": "{{count}} 个 URL",
+      "invalidLineNumbers": "以下行的链接或文件名无效：{{lines}}",
       "urlsWithInvalid": "{{valid}} 个有效，{{invalid}} 个无效",
       "urlsLabel": "链接",
       "advanced": "高级",
@@ -898,6 +899,7 @@
         "doc": "文档"
       },
       "errors": {
+        "invalidLines": "请先修正无效的链接或文件名",
         "urlsRequired": "至少需要一个 URL",
         "saveDirRequired": "必须指定保存目录",
         "noFilesSelected": "请至少选择一个文件",

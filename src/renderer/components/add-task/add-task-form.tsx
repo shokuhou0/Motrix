@@ -169,11 +169,9 @@ export function AddTaskForm({
         const lines = parseUrlLines(content)
         if (lines.length === 0 || !lines.every((line) => line.valid)) return
         if (form.getValues('urls')) return
-        form.setValue(
-          'urls' as never,
-          lines.map((line) => line.url).join('\n') as never,
-          { shouldValidate: true }
-        )
+        form.setValue('urls' as never, content as never, {
+          shouldValidate: true,
+        })
       } catch {
         // Best effort — local defaults keep the form usable and the clipboard
         // may be unreadable under web permissions.

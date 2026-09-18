@@ -305,6 +305,61 @@ describe('AddTaskForm', () => {
     expect(screen.getByRole('textbox')).toHaveValue('')
   })
 
+  it('preserves named clipboard lines and submits each with its own filename', async () => {
+    const text =
+      'xxx01,https://example.com/a.mp4\nxxx02,https://example.com/b.mp4'
+    const services = {
+      ...mockServices,
+      readClipboard: vi.fn().mockResolvedValue(text),
+    }
+    const user = userEvent.setup()
+    renderForm({}, services)
+    await waitFor(() => expect(screen.getByRole('textbox')).toHaveValue(text))
+    await user.click(screen.getByRole('button', { name: /download/i }))
+    await waitFor(() =>
+      expect(invokeMock).toHaveBeenCalledWith(
+        'command:createTask',
+        expect.objectContaining({
+          uris: ['https://example.com/b.mp4'],
+          filename: 'xxx02.mp4',
+        })
+      )
+    )
+    expect(invokeMock).toHaveBeenCalledWith(
+      'command:createTask',
+      expect.objectContaining({
+        uris: ['https://example.com/a.mp4'],
+        filename: 'xxx01.mp4',
+      })
+    )
+  })
+
+  it('pastes a named batch without losing names and submits both tasks', async () => {
+    const user = userEvent.setup()
+    renderForm()
+    await user.click(screen.getByRole('textbox'))
+    await user.paste(
+      'xxx01,https://example.com/a.mp4\nxxx02,https://example.com/b.mp4'
+    )
+    await user.click(screen.getByRole('button', { name: /download/i }))
+    await waitFor(() =>
+      expect(invokeMock).toHaveBeenCalledWith(
+        'command:createTask',
+        expect.objectContaining({
+          uris: ['https://example.com/b.mp4'],
+          filename: 'xxx02.mp4',
+        })
+      )
+    )
+    expect(invokeMock).toHaveBeenCalledWith(
+      'command:createTask',
+      expect.objectContaining({
+        uris: ['https://example.com/a.mp4'],
+        filename: 'xxx01.mp4',
+      })
+    )
+  })
+
   it('submit flow calls transport and onSubmitSuccess', async () => {
     const onSubmitSuccess = vi.fn()
     const user = userEvent.setup()

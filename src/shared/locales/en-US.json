@@ -853,7 +853,7 @@
       "title": "New Task",
       "links": "Links",
       "torrent": "Torrent",
-      "urlPlaceholder": "Enter URL, magnet link...",
+      "urlPlaceholder": "Enter URL, magnet link, or filename,https://example.com/video.mp4 (one per line)",
       "dropTorrent": "Drop .torrent file here or click to select",
       "clearSelection": "Clear selection",
       "createFailed": "Failed to create download task.",
@@ -861,6 +861,7 @@
       "parseFailed": "Failed to parse torrent file.",
       "urlsCount_one": "{{count}} URL",
       "urlsCount_other": "{{count}} URLs",
+      "invalidLineNumbers": "Invalid URL or filename on line(s): {{lines}}",
       "urlsWithInvalid": "{{valid}} valid, {{invalid}} invalid",
       "urlsLabel": "URLs",
       "advanced": "Advanced",
@@ -910,6 +911,7 @@
         "doc": "Document"
       },
       "errors": {
+        "invalidLines": "Fix invalid URLs or filenames before downloading",
         "urlsRequired": "At least one URL is required",
         "saveDirRequired": "Save directory is required",
         "noFilesSelected": "Select at least one file",

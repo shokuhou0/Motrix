@@ -460,3 +460,45 @@ describe('encodeUrlParams', () => {
     expect(encoded).toEqual({ mode: 'torrent', magnet: 'magnet:?x' })
   })
 })
+
+describe('named batch requests', () => {
+  it('creates independent requests with names and common download options', () => {
+    const requests = formValuesToTaskCreateRequests({
+      tab: 'links',
+      saveDir: '/d',
+      urls: 'xxx01,https://example.com/a.mp4\nxxx02,https://example.com/b.mp4\nhttps://example.com/c.mp4',
+      filename: 'global.mp4',
+      cookie: 'session=1',
+    })
+    expect(
+      requests.map((r) =>
+        r.type === 'http' ? [r.uris, r.filename, r.headers] : null
+      )
+    ).toEqual([
+      [
+        ['https://example.com/a.mp4'],
+        'xxx01.mp4',
+        [{ name: 'Cookie', value: 'session=1' }],
+      ],
+      [
+        ['https://example.com/b.mp4'],
+        'xxx02.mp4',
+        [{ name: 'Cookie', value: 'session=1' }],
+      ],
+      [
+        ['https://example.com/c.mp4'],
+        undefined,
+        [{ name: 'Cookie', value: 'session=1' }],
+      ],
+    ])
+  })
+  it('blocks an invalid batch before creating any requests', () => {
+    const values = {
+      tab: 'links' as const,
+      saveDir: '/d',
+      urls: 'good,https://example.com/a.mp4\n../bad,https://example.com/b.mp4',
+    }
+    expect(addTaskFormSchema.safeParse(values).success).toBe(false)
+    expect(() => formValuesToTaskCreateRequests(values)).toThrow()
+  })
+})

@@ -179,6 +179,16 @@ export function UrlTextarea({ name, autoFocus }: UrlTextareaProps) {
           </InputGroupText>
         </InputGroupAddon>
       </InputGroup>
+      {invalid > 0 && (
+        <p role="alert" className="text-xs text-destructive">
+          {t('task.add.invalidLineNumbers', {
+            lines: parsed
+              .filter((line) => !line.valid)
+              .map((line) => line.line + 1)
+              .join(', '),
+          })}
+        </p>
+      )}
     </div>
   )
 }
