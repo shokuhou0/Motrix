@@ -120,3 +120,45 @@ describe('named URL lines', () => {
     })
   })
 })
+
+describe('batch separator compatibility', () => {
+  it.each([',', '，', '$'])(
+    'accepts %s between a Chinese filename and a URL',
+    (separator) => {
+      expect(
+        parseUrlLines(`全职猎人01${separator}https://example.com/video.mp4`)
+      ).toEqual([
+        {
+          line: 0,
+          url: 'https://example.com/video.mp4',
+          filename: '全职猎人01.mp4',
+          valid: true,
+        },
+      ])
+    }
+  )
+
+  it('keeps signed URL punctuation unchanged in mixed batches', () => {
+    const url = 'https://example.com/a,$b.mp4?token=a$b,c，d'
+    const lines = parseUrlLines(`xxx01$${url}\r\nxxx02，${url}\r\n${url}`)
+    expect(lines.map((line) => line.url)).toEqual([url, url, url])
+    expect(lines.map((line) => line.filename)).toEqual([
+      'xxx01.mp4',
+      'xxx02.mp4',
+      undefined,
+    ])
+    expect(lines.every((line) => line.valid)).toBe(true)
+  })
+
+  it.each(['$', '，'])(
+    'still rejects unsafe filenames with %s',
+    (separator) => {
+      expect(
+        parseUrlLines(`../escape${separator}https://example.com/a.mp4`)[0].valid
+      ).toBe(false)
+      expect(
+        parseUrlLines(`${separator}https://example.com/a.mp4`)[0].valid
+      ).toBe(false)
+    }
+  )
+})

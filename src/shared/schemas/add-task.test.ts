@@ -502,3 +502,23 @@ describe('named batch requests', () => {
     expect(() => formValuesToTaskCreateRequests(values)).toThrow()
   })
 })
+
+it('creates independently named requests for dollar and full-width comma input', () => {
+  const values = addTaskFormSchema.parse({
+    tab: 'links',
+    saveDir: 'D:/downloads',
+    urls: 'xxx01$https://example.com/a.mp4\n全职猎人02，https://example.com/b.mp4',
+  })
+  expect(formValuesToTaskCreateRequests(values)).toMatchObject([
+    {
+      type: 'http',
+      uris: ['https://example.com/a.mp4'],
+      filename: 'xxx01.mp4',
+    },
+    {
+      type: 'http',
+      uris: ['https://example.com/b.mp4'],
+      filename: '全职猎人02.mp4',
+    },
+  ])
+})

@@ -31,12 +31,12 @@ export function parseUrlLines(text: string): ParsedLine[] {
   for (const [line, raw] of text.split('\n').entries()) {
     const input = raw.trim()
     if (!input) continue
-    // A URL may itself contain commas, including in signed query parameters.
-    const comma = /^(?:https?:\/\/|ftp:\/\/|magnet:)/i.test(input)
+    // A complete URL may contain separators in its path or signed query parameters.
+    const separator = /^(?:https?:\/\/|ftp:\/\/|magnet:)/i.test(input)
       ? -1
-      : input.indexOf(',')
-    const url = comma < 0 ? input : input.slice(comma + 1).trim()
-    let filename = comma < 0 ? undefined : input.slice(0, comma).trim()
+      : input.search(/[,，$]/)
+    const url = separator < 0 ? input : input.slice(separator + 1).trim()
+    let filename = separator < 0 ? undefined : input.slice(0, separator).trim()
     let valid = false
     if (url.startsWith('magnet:')) {
       valid = filename === undefined && url.startsWith('magnet:?')
